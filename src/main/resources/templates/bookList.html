@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图书管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #2c3e50;
+            color: white;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+        }
+        .sidebar a:hover {
+            background-color: #34495e;
+        }
+        .content {
+            padding: 20px;
+        }
+        .book-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: transform 0.2s;
+        }
+        .book-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .book-cover {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .stock-available {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .stock-low {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .stock-out {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <!-- 侧边栏 -->
+        <div class="col-md-2 sidebar">
+            <h3 class="text-center py-3">管理员中心</h3>
+            <div class="nav flex-column">
+                <a href="/admin/dashboard">仪表板</a>
+                <a href="/book/manage" class="active">图书管理</a>
+                <a href="/admin/users/page">用户管理</a>
+                <a href="/borrow/manage">借阅管理</a>
+                <a href="/admin/reports/page">统计报表</a>
+                <hr>
+                <a href="/user/logout">退出登录</a>
+            </div>
+        </div>
+        
+        <!-- 主内容区 -->
+        <div class="col-md-10 content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>图书管理</h2>
+                <div>
+                    <button class="btn btn-primary" id="addBookBtn">添加图书</button>
+                    <button class="btn btn-outline-secondary" id="refreshBtn">刷新</button>
+                </div>
+            </div>
+            
+            <!-- 搜索和筛选 -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="searchInput" placeholder="搜索图书名称、作者或ISBN...">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-control" id="categoryFilter">
+                                <option value="">所有分类</option>
+                                <!-- 分类将通过JavaScript动态加载 -->
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-control" id="stockFilter">
+                                <option value="">所有库存状态</option>
+                                <option value="available">有库存</option>
+                                <option value="low">库存紧张</option>
+                                <option value="out">无库存</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" id="searchBtn">搜索</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 图书列表 -->
+            <div class="row" id="bookList">
+                <!-- 图书卡片将通过JavaScript动态加载 -->
+                <div class="col-12 text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <p>正在加载图书数据...</p>
+                </div>
+            </div>
+            
+            <!-- 分页 -->
+            <nav aria-label="图书分页" class="mt-4">
+                <ul class="pagination justify-content-center" id="pagination">
+                    <!-- 分页将通过JavaScript动态生成 -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑图书模态框 -->
+<div class="modal fade" id="bookModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">添加图书</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bookForm">
+                    <input type="hidden" id="bookId">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">图书名称 *</label>
+                                <input type="text" class="form-control" id="bookName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">作者 *</label>
+                                <input type="text" class="form-control" id="author" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">ISBN *</label>
+                                <input type="text" class="form-control" id="isbn" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">分类</label>
+                                <select class="form-control" id="category">
+                                    <option value="">选择分类</option>
+                                    <option value="文学">文学</option>
+                                    <option value="科技">科技</option>
+                                    <option value="历史">历史</option>
+                                    <option value="哲学">哲学</option>
+                                    <option value="艺术">艺术</option>
+                                    <option value="教育">教育</option>
+                                    <option value="小说">小说</option>
+                                    <option value="传记">传记</option>
+                                    <option value="科学">科学</option>
+                                    <option value="计算机">计算机</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">库存数量 *</label>
+                                <input type="number" class="form-control" id="stock" min="0" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">封面图片URL</label>
+                                <input type="text" class="form-control" id="imageUrl" placeholder="https://example.com/book-cover.jpg">
+                                <small class="text-muted">可选的图书封面图片地址</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">图书描述</label>
+                                <textarea class="form-control" id="description" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">出版社</label>
+                                <input type="text" class="form-control" id="publisher">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveBookBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 图书详情模态框 -->
+<div class="modal fade" id="bookDetailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">图书详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <img id="detailImage" src="" alt="图书封面" class="img-fluid rounded" style="max-height: 200px;">
+                </div>
+                <table class="table">
+                    <tr>
+                        <th>图书名称：</th>
+                        <td id="detailName"></td>
+                    </tr>
+                    <tr>
+                        <th>作者：</th>
+                        <td id="detailAuthor"></td>
+                    </tr>
+                    <tr>
+                        <th>ISBN：</th>
+                        <td id="detailIsbn"></td>
+                    </tr>
+                    <tr>
+                        <th>分类：</th>
+                        <td id="detailCategory"></td>
+                    </tr>
+                    <tr>
+                        <th>库存：</th>
+                        <td id="detailStock"></td>
+                    </tr>
+                    <tr>
+                        <th>出版社：</th>
+                        <td id="detailPublisher"></td>
+                    </tr>
+                    <tr>
+                        <th>描述：</th>
+                        <td id="detailDescription"></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" id="borrowBookBtn">借阅</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // 全局变量
+    let currentPage = 1;
+    let pageSize = 12;
+    let totalBooks = 0;
+    let currentBookId = null;
+    
+    $(document).ready(function() {
+        // 加载分类数据
+        loadCategories();
+        
+        // 加载图书数据
+        loadBooks();
+        
+        // 添加图书按钮点击事件
+        $('#addBookBtn').click(function() {
+            $('#modalTitle').text('添加图书');
+            $('#bookForm')[0].reset();
+            $('#bookId').val('');
+            var modal = new bootstrap.Modal(document.getElementById('bookModal'));
+            modal.show();
+        });
+        
+        // 刷新按钮点击事件
+        $('#refreshBtn').click(function() {
+            loadBooks();
+        });
+        
+        // 搜索按钮点击事件
+        $('#searchBtn').click(function() {
+            currentPage = 1;
+            loadBooks();
+        });
+        
+        // 搜索输入框回车事件
+        $('#searchInput').keypress(function(e) {
+            if (e.which === 13) {
+                currentPage = 1;
+                loadBooks();
+            }
+        });
+        
+        // 保存图书按钮点击事件
+        $('#saveBookBtn').click(function() {
+            saveBook();
+        });
+        
+        // 借阅图书按钮点击事件
+        $('#borrowBookBtn').click(function() {
+            if (currentBookId) {
+                borrowBook(currentBookId);
+            }
+        });
+    });
+    
+    function loadCategories() {
+        $.ajax({
+            url: '/book/categories',
+            type: 'GET',
+            success: function(response) {
+                if (response && response.success && response.categories) {
+                    const categoryFilter = $('#categoryFilter');
+                    const categorySelect = $('#category');
+                    
+                    // 清空现有选项（除了第一个"所有分类"选项）
+                    categoryFilter.find('option:not(:first)').remove();
+                    categorySelect.find('option:not(:first)').remove();
+                    
+                    // 添加分类选项
+                    response.categories.forEach(function(category) {
+                        if (category) {
+                            categoryFilter.append(`<option value="${category}">${category}</option>`);
+                            categorySelect.append(`<option value="${category}">${category}</option>`);
+                        }
+                    });
+                }
+            },
+            error: function() {
+                console.error('加载分类数据失败');
+            }
+        });
+    }
+    
+    function loadBooks() {
+        const searchText = $('#searchInput').val();
+        const category = $('#categoryFilter').val();
+        const stockFilter = $('#stockFilter').val();
+        
+        // 显示加载状态
+        $('#bookList').html(`
+            <div class="col-12 text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                <p>正在加载图书数据...</p>
+            </div>
+        `);
+        
+        // 构建查询参数
+        let url = '/book/list?page=' + currentPage + '&size=' + pageSize;
+        if (searchText) url += '&search=' + encodeURIComponent(searchText);
+        if (category) url += '&category=' + encodeURIComponent(category);
+        
+        console.log('正在请求URL:', url);
+        
+        $.ajax({
+            url: url,
+            type: 'GET',
+            success: function(response) {
+                console.log('收到响应:', response);
+                if (response && response.success && response.books) {
+                    displayBooks(response.books);
+                    totalBooks = response.total || response.books.length;
+                    updatePagination();
+                    
+                    // 应用库存筛选（前端筛选）
+                    if ($('#stockFilter').val()) {
+                        applyStockFilter($('#stockFilter').val());
+                    }
+                } else {
+                    console.log('响应格式不正确:', response);
+                    $('#bookList').html(`
+                        <div class="col-12 text-center">
+                            <p class="text-muted">暂无图书数据</p>
+                            <p class="text-muted small">响应: ${JSON.stringify(response)}</p>
+                        </div>
+                    `);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX请求失败:', status, error);
+                $('#bookList').html(`
+                    <div class="col-12 text-center">
+                        <p class="text-danger">加载失败，请稍后重试</p>
+                        <p class="text-muted small">错误: ${error}</p>
+                    </div>
+                `);
+            }
+        });
+    }
+    
+    function displayBooks(books) {
+        const bookList = $('#bookList');
+        bookList.empty();
+        
+        if (books.length === 0) {
+            bookList.html(`
+                <div class="col-12 text-center">
+                    <p class="text-muted">暂无图书数据</p>
+                </div>
+            `);
+            return;
+        }
+        
+        books.forEach(function(book) {
+            // 确定库存状态和样式
+            let stockClass = 'stock-available';
+            let stockText = book.stock + ' 本可借';
+            
+            if (book.stock === 0) {
+                stockClass = 'stock-out';
+                stockText = '已借完';
+            } else if (book.stock <= 5) {
+                stockClass = 'stock-low';
+                stockText = '仅剩 ' + book.stock + ' 本';
+            }
+            
+            // 默认封面图片 - 使用简单的SVG占位符
+            const coverImage = book.imageUrl || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"><rect width="200" height="300" fill="%23f0f0f0"/><text x="100" y="150" text-anchor="middle" font-family="Arial" font-size="14" fill="%23999">No Cover</text></svg>';
+            
+            const bookCard = `
+                <div class="col-md-3 mb-4">
+                    <div class="book-card">
+                        <div class="text-center mb-3">
+                            <img src="${coverImage}" alt="${book.bookName}" class="book-cover">
+                        </div>
+                        <h6 class="book-title" title="${book.bookName}">${book.bookName}</h6>
+                        <p class="text-muted small mb-1">作者：${book.author || '未知'}</p>
+                        <p class="text-muted small mb-1">分类：${book.category || '未分类'}</p>
+                        <p class="mb-2"><span class="${stockClass}">${stockText}</span></p>
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewBookDetail(${book.bookId})">详情</button>
+                            <button class="btn btn-sm btn-outline-success" onclick="editBook(${book.bookId})" ${book.stock === 0 ? 'disabled' : ''}>编辑</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteBook(${book.bookId})">删除</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            bookList.append(bookCard);
+        });
+    }
+    
+    function applyStockFilter(filter) {
+        $('.book-card').each(function() {
+            const stockText = $(this).find('.stock-available, .stock-low, .stock-out').text();
+            let show = true;
+            
+            if (filter === 'available') {
+                show = $(this).find('.stock-available').length > 0;
+            } else if (filter === 'low') {
+                show = $(this).find('.stock-low').length > 0;
+            } else if (filter === 'out') {
+                show = $(this).find('.stock-out').length > 0;
+            }
+            
+            if (show) {
+                $(this).closest('.col-md-3').show();
+            } else {
+                $(this).closest('.col-md-3').hide();
+            }
+        });
+    }
+    
+    function updatePagination() {
+        const totalPages = Math.ceil(totalBooks / pageSize);
+        const pagination = $('#pagination');
+        pagination.empty();
+        
+        if (totalPages <= 1) return;
+        
+        // 上一页按钮
+        const prevDisabled = currentPage === 1 ? 'disabled' : '';
+        pagination.append(`
+            <li class="page-item ${prevDisabled}">
+                <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">上一页</a>
+            </li>
+        `);
+        
+        // 页码按钮
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, startPage + 4);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const active = i === currentPage ? 'active' : '';
+            pagination.append(`
+                <li class="page-item ${active}">
+                    <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+                </li>
+            `);
+        }
+        
+        // 下一页按钮
+        const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+        pagination.append(`
+            <li class="page-item ${nextDisabled}">
+                <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">下一页</a>
+            </li>
+        `);
+    }
+    
+    function changePage(page) {
+        if (page < 1 || page > Math.ceil(totalBooks / pageSize)) return;
+        currentPage = page;
+        loadBooks();
+        window.scrollTo(0, 0);
+    }
+    
+    function viewBookDetail(bookId) {
+        $.ajax({
+            url: '/book/' + bookId,
+            type: 'GET',
+            success: function(book) {
+                if (book) {
+                    currentBookId = bookId;
+                    // 使用SVG占位符图片
+                    const placeholderImage = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"><rect width="200" height="300" fill="%23f0f0f0"/><text x="100" y="150" text-anchor="middle" font-family="Arial" font-size="14" fill="%23999">No Cover</text></svg>';
+                    $('#detailImage').attr('src', book.imageUrl || placeholderImage);
+                    $('#detailName').text(book.bookName || '未知');
+                    $('#detailAuthor').text(book.author || '未知');
+                    $('#detailIsbn').text(book.isbn || '未知');
+                    $('#detailCategory').text(book.category || '未分类');
+                    $('#detailStock').text(book.stock + ' 本');
+                    $('#detailPublisher').text(book.publisher || '未知');
+                    $('#detailDescription').text(book.description || '暂无描述');
+                    
+                    // 更新借阅按钮状态
+                    const borrowBtn = $('#borrowBookBtn');
+                    if (book.stock > 0) {
+                        borrowBtn.prop('disabled', false).text('借阅');
+                    } else {
+                        borrowBtn.prop('disabled', true).text('已借完');
+                    }
+                    
+                    var modal = new bootstrap.Modal(document.getElementById('bookDetailModal'));
+                    modal.show();
+                }
+            },
+            error: function() {
+                alert('加载图书详情失败！');
+            }
+        });
+    }
+    
+    function editBook(bookId) {
+        $.ajax({
+            url: '/book/' + bookId,
+            type: 'GET',
+            success: function(book) {
+                if (book) {
+                    $('#modalTitle').text('编辑图书');
+                    $('#bookId').val(book.bookId);
+                    $('#bookName').val(book.bookName);
+                    $('#author').val(book.author);
+                    $('#isbn').val(book.isbn);
+                    $('#category').val(book.category);
+                    $('#stock').val(book.stock);
+                    $('#imageUrl').val(book.imageUrl || '');
+                    $('#description').val(book.description || '');
+                    $('#publisher').val(book.publisher || '');
+                    
+                    var modal = new bootstrap.Modal(document.getElementById('bookModal'));
+                    modal.show();
+                }
+            },
+            error: function() {
+                alert('加载图书信息失败！');
+            }
+        });
+    }
+    
+    function deleteBook(bookId) {
+        if (confirm('确定要删除这本图书吗？此操作不可恢复！')) {
+            $.ajax({
+                url: '/book/delete/' + bookId,
+                type: 'DELETE',
+                success: function(response) {
+                    if (response) {
+                        alert('删除成功！');
+                        loadBooks();
+                    } else {
+                        alert('删除失败！');
+                    }
+                },
+                error: function() {
+                    alert('删除请求失败！');
+                }
+            });
+        }
+    }
+    
+    function saveBook() {
+        const bookData = {
+            bookId: $('#bookId').val() || null,
+            bookName: $('#bookName').val(),
+            author: $('#author').val(),
+            isbn: $('#isbn').val(),
+            category: $('#category').val(),
+            stock: parseInt($('#stock').val()),
+            imageUrl: $('#imageUrl').val() || null,
+            description: $('#description').val() || null,
+            publisher: $('#publisher').val() || null
+        };
+        
+        // 验证必填字段
+        if (!bookData.bookName || !bookData.author || !bookData.isbn || bookData.stock < 0) {
+            alert('请填写所有必填字段，且库存不能为负数！');
+            return;
+        }
+        
+        const url = bookData.bookId ? '/book/update' : '/book/add';
+        const method = bookData.bookId ? 'POST' : 'POST';
+        
+        $.ajax({
+            url: url,
+            type: method,
+            contentType: 'application/json',
+            data: JSON.stringify(bookData),
+            success: function(response) {
+                if (response) {
+                    alert(bookData.bookId ? '更新成功！' : '添加成功！');
+                    $('#bookModal').modal('hide');
+                    loadBooks();
+                } else {
+                    alert('操作失败！');
+                }
+            },
+            error: function(xhr) {
+                alert('请求失败：' + (xhr.responseJSON ? xhr.responseJSON.message : '服务器错误'));
+            }
+        });
+    }
+    
+    function borrowBook(bookId) {
+        if (!confirm('确定要借阅这本书吗？')) return;
+        
+        $.ajax({
+            url: '/borrow/borrow',
+            type: 'POST',
+            data: {
+                bookId: bookId,
+                days: 30  // 默认借阅30天
+            },
+            success: function(response) {
+                if (response) {
+                    alert('借阅成功！');
+                    $('#bookDetailModal').modal('hide');
+                    loadBooks(); // 刷新图书列表
+                } else {
+                    alert('借阅失败，可能库存不足或已达到最大借阅数量！');
+                }
+            },
+            error: function(xhr) {
+                alert('借阅请求失败：' + (xhr.responseJSON ? xhr.responseJSON.message : '服务器错误'));
+            }
+        });
+    }
+</script>
+</body>
+</html>

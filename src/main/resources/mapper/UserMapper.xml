@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.example.zhangmengxia.mapper.UserMapper">
+    <resultMap id="BaseResultMap" type="org.example.zhangmengxia.entity.User">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="name" property="name"/>
+        <result column="role" property="role"/>
+        <result column="phone" property="phone"/>
+        <result column="email" property="email"/>
+        <result column="student_id" property="studentId"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="login" resultMap="BaseResultMap">
+        SELECT id, username, password, name, role, phone, email, student_id, create_time, update_time 
+        FROM user 
+        WHERE username = #{username} AND password = #{password}
+    </select>
+
+    <update id="logout" parameterType="java.lang.Integer">
+        <!-- 由于不清楚具体表结构，这里执行无操作更新 -->
+        UPDATE user SET username = username WHERE id = #{userId}
+    </update>
+
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT id, username, password, name, role, phone, email, student_id, create_time, update_time 
+        FROM user WHERE id = #{userId}
+    </select>
+
+    <!-- 新增：根据用户名查找用户 -->
+    <select id="findByUsername" resultMap="BaseResultMap">
+        SELECT id, username, password, name, role, phone, email, student_id, create_time, update_time 
+        FROM user WHERE username = #{username}
+    </select>
+
+    <!-- 新增：查找所有用户 -->
+    <select id="findAll" resultMap="BaseResultMap">
+        SELECT id, username, password, name, role, phone, email, student_id, create_time, update_time 
+        FROM user
+    </select>
+
+    <!-- 新增：添加用户 -->
+    <insert id="add" parameterType="org.example.zhangmengxia.entity.User">
+        INSERT INTO user(username, password, name, role, phone, email, student_id, create_time, update_time)
+        VALUES(#{username}, #{password}, #{name}, #{role}, #{phone}, #{email}, #{studentId}, NOW(), NOW())
+    </insert>
+
+    <!-- 新增：更新用户 -->
+    <update id="update" parameterType="org.example.zhangmengxia.entity.User">
+        UPDATE user
+        SET username = #{username},
+            password = #{password},
+            name = #{name},
+            role = #{role},
+            phone = #{phone},
+            email = #{email},
+            student_id = #{studentId},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 新增：删除用户 -->
+    <delete id="delete" parameterType="java.lang.Integer">
+        DELETE FROM user WHERE id = #{id}
+    </delete>
+
+    <!-- 新增：查找所有读者（role=0） -->
+    <select id="findAllReaders" resultMap="BaseResultMap">
+        SELECT id, username, password, name, role, phone, email, student_id, create_time, update_time 
+        FROM user WHERE role = 0
+    </select>
+
+    <!-- 新增：查找所有管理员（role=1） -->
+    <select id="findAllAdmins" resultMap="BaseResultMap">
+        SELECT id, username, password, name, role, phone, email, student_id, create_time, update_time 
+        FROM user WHERE role = 1
+    </select>
+</mapper>

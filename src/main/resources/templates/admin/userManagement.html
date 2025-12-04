@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #2c3e50;
+            color: white;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+        }
+        .sidebar a:hover {
+            background-color: #34495e;
+        }
+        .content {
+            padding: 20px;
+        }
+        .role-admin {
+            background-color: #dc3545;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.85em;
+        }
+        .role-reader {
+            background-color: #28a745;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.85em;
+        }
+        .status-active {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-inactive {
+            color: #6c757d;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <!-- 侧边栏 -->
+        <div class="col-md-2 sidebar">
+            <h3 class="text-center py-3">管理员中心</h3>
+            <div class="nav flex-column">
+                <a href="/admin/dashboard">仪表板</a>
+                <a href="/book/manage">图书管理</a>
+                <a href="/admin/users/page" class="active">用户管理</a>
+                <a href="/borrow/manage">借阅管理</a>
+                <a href="/admin/reports/page">统计报表</a>
+                <hr>
+                <a href="/user/logout">退出登录</a>
+            </div>
+        </div>
+        
+        <!-- 主内容区 -->
+        <div class="col-md-10 content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>用户管理</h2>
+                <div>
+                    <button class="btn btn-primary" id="addUserBtn">添加用户</button>
+                    <button class="btn btn-outline-secondary" id="refreshBtn">刷新</button>
+                </div>
+            </div>
+            
+            <!-- 搜索和筛选 -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="searchInput" placeholder="搜索用户名、姓名或邮箱...">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-control" id="roleFilter">
+                                <option value="">所有角色</option>
+                                <option value="admin">管理员</option>
+                                <option value="reader">读者</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-control" id="statusFilter">
+                                <option value="">所有状态</option>
+                                <option value="active">活跃</option>
+                                <option value="inactive">禁用</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" id="searchBtn">搜索</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 用户表格 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">用户列表</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="userTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>用户名</th>
+                                    <th>姓名</th>
+                                    <th>邮箱</th>
+                                    <th>联系方式</th>
+                                    <th>角色</th>
+                                    <th>状态</th>
+                                    <th>注册时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userTableBody">
+                                <!-- 用户数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3" id="loadingSpinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2">正在加载用户数据...</p>
+                    </div>
+                    <div class="text-center mt-3" id="noUsers" style="display: none;">
+                        <p class="text-muted">暂无用户数据</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑用户模态框 -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">添加用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId">
+                    <div class="mb-3">
+                        <label class="form-label">用户名 *</label>
+                        <input type="text" class="form-control" id="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">密码 *</label>
+                        <input type="password" class="form-control" id="password" required>
+                        <small class="text-muted">至少6个字符</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">确认密码 *</label>
+                        <input type="password" class="form-control" id="confirmPassword" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">姓名 *</label>
+                        <input type="text" class="form-control" id="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-control" id="email">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系方式</label>
+                        <input type="text" class="form-control" id="phone">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">角色</label>
+                        <select class="form-control" id="role">
+                            <option value="reader">读者</option>
+                            <option value="admin">管理员</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">状态</label>
+                        <select class="form-control" id="status">
+                            <option value="active">活跃</option>
+                            <option value="inactive">禁用</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveUserBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // 加载用户数据
+        loadUsers();
+        
+        // 添加用户按钮点击事件
+        $('#addUserBtn').click(function() {
+            $('#modalTitle').text('添加用户');
+            $('#userForm')[0].reset();
+            $('#userId').val('');
+            var modal = new bootstrap.Modal(document.getElementById('userModal'));
+            modal.show();
+        });
+        
+        // 刷新按钮点击事件
+        $('#refreshBtn').click(function() {
+            loadUsers();
+        });
+        
+        // 搜索按钮点击事件
+        $('#searchBtn').click(function() {
+            loadUsers();
+        });
+        
+        // 保存用户按钮点击事件
+        $('#saveUserBtn').click(function() {
+            saveUser();
+        });
+    });
+    
+    function loadUsers() {
+        const searchText = $('#searchInput').val();
+        const role = $('#roleFilter').val();
+        const status = $('#statusFilter').val();
+        
+        // 显示加载动画
+        $('#loadingSpinner').show();
+        $('#noUsers').hide();
+        $('#userTableBody').empty();
+        
+        // 构建查询参数
+        let params = {};
+        if (searchText) params.search = searchText;
+        if (role) params.role = role;
+        if (status) params.status = status;
+        
+        $.ajax({
+            url: '/admin/users',
+            type: 'GET',
+            data: params,
+            success: function(response) {
+                $('#loadingSpinner').hide();
+                
+                if (response.success && response.users && response.users.length > 0) {
+                    const users = response.users;
+                    const tbody = $('#userTableBody');
+                    tbody.empty();
+                    
+                    users.forEach(function(user) {
+                        // 格式化角色
+                        let roleBadge = '';
+                        if (user.role === 'admin') {
+                            roleBadge = '<span class="role-admin">管理员</span>';
+                        } else {
+                            roleBadge = '<span class="role-reader">读者</span>';
+                        }
+                        
+                        // 格式化状态
+                        let statusText = '';
+                        if (user.status === 'active' || user.status === 1) {
+                            statusText = '<span class="status-active">活跃</span>';
+                        } else {
+                            statusText = '<span class="status-inactive">禁用</span>';
+                        }
+                        
+                        // 格式化注册时间
+                        let registerTime = '-';
+                        if (user.createTime) {
+                            const date = new Date(user.createTime);
+                            registerTime = date.toLocaleDateString();
+                        }
+                        
+                        const row = `
+                            <tr>
+                                <td>${user.id || 'N/A'}</td>
+                                <td>${user.username || 'N/A'}</td>
+                                <td>${user.name || 'N/A'}</td>
+                                <td>${user.email || 'N/A'}</td>
+                                <td>${user.phone || 'N/A'}</td>
+                                <td>${roleBadge}</td>
+                                <td>${statusText}</td>
+                                <td>${registerTime}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="editUser(${user.id})">编辑</button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${user.id})">删除</button>
+                                    ${user.role !== 'admin' ? `<button class="btn btn-sm btn-outline-warning" onclick="toggleUserStatus(${user.id}, '${user.status === 'active' || user.status === 1 ? 'active' : 'inactive'}')">${user.status === 'active' || user.status === 1 ? '禁用' : '激活'}</button>` : ''}
+                                </td>
+                            </tr>
+                        `;
+                        tbody.append(row);
+                    });
+                    
+                    // 初始化DataTable
+                    $('#userTable').DataTable({
+                        pageLength: 10,
+                        language: {
+                            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/zh-CN.json'
+                        }
+                    });
+                    
+                } else {
+                    $('#noUsers').show();
+                }
+            },
+            error: function() {
+                $('#loadingSpinner').hide();
+                $('#userTableBody').html('<tr><td colspan="9" class="text-center text-danger">加载失败，请刷新页面重试</td></tr>');
+            }
+        });
+    }
+    
+    function editUser(userId) {
+        // 这里应该调用API获取用户详情
+        // 暂时模拟
+        alert('编辑用户功能开发中，用户ID: ' + userId);
+    }
+    
+    function deleteUser(userId) {
+        if (confirm('确定要删除这个用户吗？此操作不可恢复！')) {
+            $.ajax({
+                url: '/user/delete/' + userId,
+                type: 'DELETE',
+                success: function(response) {
+                    if (response.success) {
+                        alert('删除成功！');
+                        loadUsers();
+                    } else {
+                        alert('删除失败：' + (response.message || '请重试！'));
+                    }
+                },
+                error: function() {
+                    alert('删除请求失败！');
+                }
+            });
+        }
+    }
+    
+    function toggleUserStatus(userId, currentStatus) {
+        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+        const action = newStatus === 'active' ? '激活' : '禁用';
+        
+        if (confirm(`确定要${action}这个用户吗？`)) {
+            // 这里应该调用API更新用户状态
+            // 暂时模拟成功
+            alert(`用户状态已${action}`);
+            loadUsers();
+        }
+    }
+    
+    function saveUser() {
+        const userData = {
+            id: $('#userId').val() || null,
+            username: $('#username').val(),
+            password: $('#password').val(),
+            name: $('#name').val(),
+            email: $('#email').val(),
+            phone: $('#phone').val(),
+            role: $('#role').val(),
+            status: $('#status').val()
+        };
+        
+        // 验证必填字段
+        if (!userData.username || !userData.password || !userData.name) {
+            alert('请填写所有必填字段！');
+            return;
+        }
+        
+        if (userData.password.length < 6) {
+            alert('密码至少需要6个字符！');
+            return;
+        }
+        
+        if (userData.password !== $('#confirmPassword').val()) {
+            alert('两次输入的密码不一致！');
+            return;
+        }
+        
+        const url = userData.id ? '/user/update' : '/user/register';
+        const method = userData.id ? 'POST' : 'POST';
+        
+        $.ajax({
+            url: url,
+            type: method,
+            contentType: 'application/json',
+            data: JSON.stringify(userData),
+            success: function(response) {
+                if (response.success) {
+                    alert(userData.id ? '更新成功！' : '添加成功！');
+                    $('#userModal').modal('hide');
+                    loadUsers();
+                } else {
+                    alert('操作失败：' + (response.message || '请重试！'));
+                }
+            },
+            error: function(xhr) {
+                alert('请求失败：' + (xhr.responseJSON ? xhr.responseJSON.message : '服务器错误'));
+            }
+        });
+    }
+</script>
+</body>
+</html>

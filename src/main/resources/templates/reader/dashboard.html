@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>读者仪表板</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #2c3e50;
+            color: white;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+        }
+        .sidebar a:hover {
+            background-color: #34495e;
+        }
+        .content {
+            padding: 20px;
+        }
+        .profile-card {
+            border-radius: 10px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            margin-bottom: 20px;
+        }
+        .borrow-card {
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+        }
+        .borrow-card.borrowing {
+            border-left-color: #3498db;
+            background-color: #e8f4fc;
+        }
+        .borrow-card.overdue {
+            border-left-color: #e74c3c;
+            background-color: #fdeaea;
+        }
+        .borrow-card.returned {
+            border-left-color: #2ecc71;
+            background-color: #eafaf1;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <!-- 侧边栏 -->
+        <div class="col-md-2 sidebar">
+            <h3 class="text-center py-3">读者中心</h3>
+            <div class="nav flex-column">
+                <a href="#" class="active">仪表板</a>
+                <a href="/reader/borrowHistory">借阅历史</a>
+                <a href="#" id="bookSearch">图书搜索</a>
+                <hr>
+                <a href="/user/logout">退出登录</a>
+            </div>
+        </div>
+        
+        <!-- 主内容区 -->
+        <div class="col-md-10 content">
+            <h2>读者仪表板</h2>
+            <p>欢迎回来，亲爱的读者！</p>
+            
+            <!-- 个人信息卡片 -->
+            <div class="profile-card">
+                <h4>我的信息</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>姓名：</strong> <span id="readerName">加载中...</span></p>
+                        <p><strong>学号：</strong> <span id="studentId">加载中...</span></p>
+                        <p><strong>联系方式：</strong> <span id="contact">加载中...</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>邮箱：</strong> <span id="email">加载中...</span></p>
+                        <p><strong>注册时间：</strong> <span id="registerTime">加载中...</span></p>
+                        <p><strong>借阅权限：</strong> <span id="borrowLimit">正常</span></p>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm" id="editProfileBtn">编辑资料</button>
+            </div>
+            
+            <!-- 借阅统计 -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body">
+                            <h5 class="card-title">当前借阅</h5>
+                            <h3 id="currentBorrowCount">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <h5 class="card-title">已归还</h5>
+                            <h3 id="returnedCount">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body">
+                            <h5 class="card-title">即将到期</h5>
+                            <h3 id="dueSoonCount">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-danger">
+                        <div class="card-body">
+                            <h5 class="card-title">已逾期</h5>
+                            <h3 id="overdueCount">0</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 当前借阅列表 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>当前借阅</h5>
+                </div>
+                <div class="card-body">
+                    <div id="currentBorrowList">
+                        <!-- 借阅记录将通过JavaScript动态加载 -->
+                        <p class="text-center">加载中...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 借阅历史 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>最近借阅历史</h5>
+                    <button class="btn btn-primary btn-sm" id="viewAllHistory">查看全部</button>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>图书名称</th>
+                                <th>借阅日期</th>
+                                <th>应还日期</th>
+                                <th>实际归还</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="borrowHistoryTable">
+                            <!-- 历史记录将通过JavaScript动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑资料模态框 -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑资料</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editProfileForm">
+                    <div class="mb-3">
+                        <label class="form-label">姓名</label>
+                        <input type="text" class="form-control" id="editName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系方式</label>
+                        <input type="text" class="form-control" id="editContact">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-control" id="editEmail">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveProfileBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // 加载读者信息和借阅历史
+        loadReaderInfo();
+        loadBorrowHistory();
+        
+        // 编辑资料按钮点击事件
+        $('#editProfileBtn').click(function() {
+            // 填充当前信息到表单
+            $('#editName').val($('#readerName').text());
+            $('#editContact').val($('#contact').text());
+            $('#editEmail').val($('#email').text());
+            
+            var modal = new bootstrap.Modal(document.getElementById('editProfileModal'));
+            modal.show();
+        });
+        
+        // 保存资料按钮点击事件
+        $('#saveProfileBtn').click(function() {
+            var name = $('#editName').val();
+            var phone = $('#editContact').val(); // 注意：字段名应该是phone，不是contact
+            var email = $('#editEmail').val();
+            
+            if (!name) {
+                alert('姓名不能为空！');
+                return;
+            }
+            
+            // 先获取当前用户信息，然后更新
+            $.ajax({
+                url: '/user/current',
+                type: 'GET',
+                success: function(response) {
+                    if (response.success && response.user) {
+                        var user = response.user;
+                        // 更新用户信息
+                        user.name = name;
+                        user.phone = phone;
+                        user.email = email;
+                        
+                        // 调用更新API
+                        $.ajax({
+                            url: '/user/update',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(user),
+                            success: function(updateResponse) {
+                                if (updateResponse.success) {
+                                    alert('资料更新成功！');
+                                    $('#editProfileModal').modal('hide');
+                                    loadReaderInfo(); // 重新加载信息
+                                } else {
+                                    alert('更新失败：' + (updateResponse.message || '请重试！'));
+                                }
+                            },
+                            error: function() {
+                                alert('请求失败，请检查网络！');
+                            }
+                        });
+                    } else {
+                        alert('无法获取当前用户信息！');
+                    }
+                },
+                error: function() {
+                    alert('请求失败，请检查网络！');
+                }
+            });
+        });
+        
+        // 查看全部历史按钮点击事件
+        $('#viewAllHistory').click(function() {
+            // 跳转到借阅历史页面
+            window.location.href = '/reader/borrowHistory';
+        });
+        
+        // 图书搜索按钮点击事件
+        $('#bookSearch').click(function(e) {
+            e.preventDefault();
+            alert('图书搜索功能即将上线');
+        });
+    });
+    
+    function loadReaderInfo() {
+        // 从后端API获取当前用户信息
+        $.ajax({
+            url: '/user/current',
+            type: 'GET',
+            success: function(response) {
+                if (response.success && response.user) {
+                    var user = response.user;
+                    $('#readerName').text(user.name || '未设置');
+                    $('#studentId').text(user.studentId || '未设置');
+                    $('#contact').text(user.phone || '未设置');
+                    $('#email').text(user.email || '未设置');
+                    // 格式化创建时间
+                    if (user.createTime) {
+                        var createDate = new Date(user.createTime);
+                        $('#registerTime').text(createDate.toLocaleDateString());
+                    } else {
+                        $('#registerTime').text('未设置');
+                    }
+                } else {
+                    // 如果API返回失败，显示默认信息
+                    $('#readerName').text('未设置');
+                    $('#studentId').text('未设置');
+                    $('#contact').text('未设置');
+                    $('#email').text('未设置');
+                    $('#registerTime').text('未设置');
+                }
+            },
+            error: function() {
+                // 如果请求失败，显示错误信息
+                $('#readerName').text('加载失败');
+                $('#studentId').text('加载失败');
+                $('#contact').text('加载失败');
+                $('#email').text('加载失败');
+                $('#registerTime').text('加载失败');
+            }
+        });
+    }
+    
+    function loadBorrowHistory() {
+        // 从后端API获取借阅历史
+        $.ajax({
+            url: '/borrow/history',
+            type: 'GET',
+            success: function(response) {
+                var tbody = $('#borrowHistoryTable');
+                tbody.empty();
+                
+                if (response.success && response.records && response.records.length > 0) {
+                    var records = response.records;
+                    // 更新统计
+                    var current = 0, returned = 0, dueSoon = 0, overdue = 0;
+                    
+                    records.forEach(function(record) {
+                        var status = '';
+                        var statusClass = '';
+                        
+                        // 使用BorrowRecord实体类中的状态常量
+                        if (record.status === 0) { // STATUS_BORROWING
+                            status = '借阅中';
+                            statusClass = 'badge bg-primary';
+                            current++;
+                            
+                            // 检查是否即将到期（这里简化处理，实际应根据应还日期计算）
+                            var borrowTime = new Date(record.borrowTime);
+                            var dueDate = new Date(borrowTime.getTime() + 30 * 24 * 60 * 60 * 1000); // 假设借期30天
+                            var today = new Date();
+                            var diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+                            
+                            if (diffDays <= 3 && diffDays >= 0) {
+                                dueSoon++;
+                            } else if (diffDays < 0) {
+                                overdue++;
+                            }
+                        } else if (record.status === 1) { // STATUS_RETURNED
+                            status = '已归还';
+                            statusClass = 'badge bg-success';
+                            returned++;
+                        } else if (record.status === 2) { // STATUS_OVERDUE
+                            status = '已逾期';
+                            statusClass = 'badge bg-danger';
+                            overdue++;
+                        } else {
+                            status = '未知';
+                            statusClass = 'badge bg-secondary';
+                        }
+                        
+                        // 格式化日期
+                        var borrowDate = record.borrowTime ? new Date(record.borrowTime).toLocaleDateString() : '-';
+                        var returnDate = record.returnTime ? new Date(record.returnTime).toLocaleDateString() : '-';
+                        
+                        var row = '<tr>' +
+                            '<td>图书ID: ' + (record.bookId || '未知') + '</td>' +
+                            '<td>' + borrowDate + '</td>' +
+                            '<td>' + (record.returnTime ? new Date(record.returnTime).toLocaleDateString() : '-') + '</td>' +
+                            '<td>' + returnDate + '</td>' +
+                            '<td><span class="' + statusClass + '">' + status + '</span></td>' +
+                            '</tr>';
+                        tbody.append(row);
+                    });
+                    
+                    // 更新统计卡片
+                    $('#currentBorrowCount').text(current);
+                    $('#returnedCount').text(returned);
+                    $('#dueSoonCount').text(dueSoon);
+                    $('#overdueCount').text(overdue);
+                    
+                    // 更新当前借阅列表
+                    updateCurrentBorrowList(records.filter(r => r.status === 0)); // STATUS_BORROWING = 0
+                } else {
+                    tbody.append('<tr><td colspan="5" class="text-center">暂无借阅记录</td></tr>');
+                    $('#currentBorrowList').html('<p class="text-center">暂无当前借阅</p>');
+                }
+            },
+            error: function() {
+                $('#borrowHistoryTable').html('<tr><td colspan="5" class="text-center">加载失败</td></tr>');
+                $('#currentBorrowList').html('<p class="text-center">加载失败</p>');
+            }
+        });
+    }
+    
+    function updateCurrentBorrowList(borrowingRecords) {
+        var container = $('#currentBorrowList');
+        container.empty();
+        
+        if (borrowingRecords.length > 0) {
+            borrowingRecords.forEach(function(record) {
+                // 计算应还日期（借阅时间+30天）
+                var borrowTime = new Date(record.borrowTime);
+                var dueDate = new Date(borrowTime.getTime() + 30 * 24 * 60 * 60 * 1000);
+                var today = new Date();
+                var diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+                
+                var cardClass = 'borrow-card borrowing';
+                var statusText = '借阅中';
+                
+                if (diffDays < 0) {
+                    cardClass = 'borrow-card overdue';
+                    statusText = '已逾期';
+                } else if (diffDays <= 3) {
+                    cardClass = 'borrow-card borrowing';
+                    statusText = '即将到期';
+                }
+                
+                var borrowDateStr = borrowTime.toLocaleDateString();
+                var dueDateStr = dueDate.toLocaleDateString();
+                
+                var card = '<div class="' + cardClass + '">' +
+                    '<h6>借阅记录 #' + record.id + '</h6>' +
+                    '<p><small>借阅日期：' + borrowDateStr + '</small></p>' +
+                    '<p><small>应还日期：' + dueDateStr + '</small></p>' +
+                    '<p><strong>状态：' + statusText + '</strong></p>' +
+                    '<button class="btn btn-sm btn-outline-primary" onclick="renewBook(' + record.id + ')">续借</button>' +
+                    '</div>';
+                container.append(card);
+            });
+        } else {
+            container.html('<p class="text-center">暂无当前借阅</p>');
+        }
+    }
+    
+    function renewBook(recordId) {
+        if (confirm('确定要续借这本书吗？')) {
+            // 调用续借API
+            $.ajax({
+                url: '/borrow/renew/' + recordId,
+                type: 'POST',
+                success: function(response) {
+                    if (response.success) {
+                        alert('续借成功！');
+                        loadBorrowHistory(); // 重新加载数据
+                    } else {
+                        alert('续借失败：' + (response.message || '请重试！'));
+                    }
+                },
+                error: function() {
+                    alert('请求失败，请检查网络！');
+                }
+            });
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>借阅管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #2c3e50;
+            color: white;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+        }
+        .sidebar a:hover {
+            background-color: #34495e;
+        }
+        .content {
+            padding: 20px;
+        }
+        .status-borrowing {
+            background-color: #28a745;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.85em;
+        }
+        .status-returned {
+            background-color: #6c757d;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.85em;
+        }
+        .status-overdue {
+            background-color: #dc3545;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.85em;
+        }
+        .btn-sm {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <!-- 侧边栏 -->
+        <div class="col-md-2 sidebar">
+            <h3 class="text-center py-3">管理员中心</h3>
+            <div class="nav flex-column">
+                <a href="/admin/dashboard">仪表板</a>
+                <a href="/book/manage">图书管理</a>
+                <a href="/admin/users/page">用户管理</a>
+                <a href="/borrow/manage" class="active">借阅管理</a>
+                <a href="/admin/reports/page">统计报表</a>
+                <hr>
+                <a href="/user/logout">退出登录</a>
+            </div>
+        </div>
+        
+        <!-- 主内容区 -->
+        <div class="col-md-10 content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>借阅管理</h2>
+                <div>
+                    <button class="btn btn-outline-secondary" id="refreshBtn">刷新</button>
+                </div>
+            </div>
+            
+            <!-- 搜索和筛选 -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="searchInput" placeholder="搜索图书名称、用户名或读者姓名...">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-control" id="statusFilter">
+                                <option value="">所有状态</option>
+                                <option value="borrowing">借阅中</option>
+                                <option value="returned">已归还</option>
+                                <option value="overdue">已逾期</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-control" id="overdueFilter">
+                                <option value="">所有记录</option>
+                                <option value="overdue">仅显示逾期</option>
+                                <option value="not_overdue">仅显示未逾期</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" id="searchBtn">搜索</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 借阅表格 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">借阅记录列表</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="borrowTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>图书名称</th>
+                                    <th>读者姓名</th>
+                                    <th>借阅日期</th>
+                                    <th>应还日期</th>
+                                    <th>实际归还日期</th>
+                                    <th>状态</th>
+                                    <th>是否逾期</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="borrowTableBody">
+                                <!-- 借阅数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3" id="loadingSpinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2">正在加载借阅数据...</p>
+                    </div>
+                    <div class="text-center mt-3" id="noRecords" style="display: none;">
+                        <p class="text-muted">暂无借阅记录</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // 加载借阅数据
+        loadBorrowRecords();
+        
+        // 刷新按钮点击事件
+        $('#refreshBtn').click(function() {
+            loadBorrowRecords();
+        });
+        
+        // 搜索按钮点击事件
+        $('#searchBtn').click(function() {
+            loadBorrowRecords();
+        });
+    });
+    
+    function loadBorrowRecords() {
+        const searchText = $('#searchInput').val();
+        const status = $('#statusFilter').val();
+        const overdueFilter = $('#overdueFilter').val();
+        
+        // 显示加载动画
+        $('#loadingSpinner').show();
+        $('#noRecords').hide();
+        $('#borrowTableBody').empty();
+        
+        // 构建查询参数
+        let params = {};
+        if (searchText) params.search = searchText;
+        if (status) params.status = status;
+        if (overdueFilter) params.overdue = overdueFilter;
+        
+        $.ajax({
+            url: '/borrow/all',
+            type: 'GET',
+            data: params,
+            success: function(response) {
+                $('#loadingSpinner').hide();
+                
+                if (response.success && response.records && response.records.length > 0) {
+                    const records = response.records;
+                    const tbody = $('#borrowTableBody');
+                    tbody.empty();
+                    
+                    records.forEach(function(record) {
+                        // 格式化状态
+                        let statusBadge = '';
+                        if (record.status === 'borrowing') {
+                            statusBadge = '<span class="status-borrowing">借阅中</span>';
+                        } else if (record.status === 'returned') {
+                            statusBadge = '<span class="status-returned">已归还</span>';
+                        } else {
+                            statusBadge = '<span class="status-overdue">已逾期</span>';
+                        }
+                        
+                        // 检查是否逾期
+                        const today = new Date();
+                        const dueDate = new Date(record.dueDate);
+                        const isOverdue = record.status === 'borrowing' && today > dueDate;
+                        const overdueText = isOverdue ? '<span class="text-danger">是</span>' : '<span class="text-success">否</span>';
+                        
+                        // 格式化日期
+                        const formatDate = (dateStr) => {
+                            if (!dateStr) return '-';
+                            const date = new Date(dateStr);
+                            return date.toLocaleDateString();
+                        };
+                        
+                        const row = `
+                            <tr>
+                                <td>${record.id || 'N/A'}</td>
+                                <td>${record.bookName || '未知图书'}</td>
+                                <td>${record.userName || '未知用户'}</td>
+                                <td>${formatDate(record.borrowDate)}</td>
+                                <td>${formatDate(record.dueDate)}</td>
+                                <td>${formatDate(record.returnDate)}</td>
+                                <td>${statusBadge}</td>
+                                <td>${overdueText}</td>
+                                <td>
+                                    ${record.status === 'borrowing' ? 
+                                        `<button class="btn btn-sm btn-outline-success" onclick="returnBook(${record.id})">归还</button>
+                                         <button class="btn btn-sm btn-outline-warning" onclick="renewBook(${record.id})">续借</button>` : 
+                                        ''}
+                                </td>
+                            </tr>
+                        `;
+                        tbody.append(row);
+                    });
+                    
+                    // 初始化DataTable
+                    $('#borrowTable').DataTable({
+                        pageLength: 10,
+                        language: {
+                            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/zh-CN.json'
+                        }
+                    });
+                    
+                } else {
+                    $('#noRecords').show();
+                }
+            },
+            error: function() {
+                $('#loadingSpinner').hide();
+                $('#borrowTableBody').html('<tr><td colspan="9" class="text-center text-danger">加载失败，请刷新页面重试</td></tr>');
+            }
+        });
+    }
+    
+    function returnBook(recordId) {
+        if (confirm('确定要归还这本书吗？')) {
+            $.ajax({
+                url: '/borrow/return/' + recordId,
+                type: 'POST',
+                success: function(response) {
+                    if (response.success) {
+                        alert('归还成功！');
+                        loadBorrowRecords();
+                    } else {
+                        alert('归还失败：' + (response.message || '请重试！'));
+                    }
+                },
+                error: function() {
+                    alert('归还请求失败！');
+                }
+            });
+        }
+    }
+    
+    function renewBook(recordId) {
+        const additionalDays = prompt('请输入续借天数（默认30天）：', '30');
+        if (additionalDays !== null) {
+            const days = parseInt(additionalDays) || 30;
+            if (days <= 0) {
+                alert('续借天数必须大于0！');
+                return;
+            }
+            
+            $.ajax({
+                url: '/borrow/renew/' + recordId,
+                type: 'POST',
+                data: { additionalDays: days },
+                success: function(response) {
+                    if (response.success) {
+                        alert('续借成功！');
+                        loadBorrowRecords();
+                    } else {
+                        alert('续借失败：' + (response.message || '请重试！'));
+                    }
+                },
+                error: function() {
+                    alert('续借请求失败！');
+                }
+            });
+        }
+    }
+</script>
+</body>
+</html>

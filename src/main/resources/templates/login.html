@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户登录 - 图书管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <link th:href="@{/login/css/signin.css}" rel="stylesheet">
+    <link th:href="@{/css/style.css}" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --glass-bg: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+        
+        body {
+            background: var(--primary-gradient);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>');
+            opacity: 0.3;
+            z-index: -1;
+        }
+        
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+        
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px 35px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .login-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+        }
+        
+        .logo-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: var(--primary-gradient);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .logo i {
+            font-size: 36px;
+            color: white;
+        }
+        
+        .login-title {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 1.8rem;
+        }
+        
+        .login-subtitle {
+            color: #666;
+            font-size: 0.95rem;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+            font-size: 0.9rem;
+        }
+        
+        .input-with-icon {
+            position: relative;
+        }
+        
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+            z-index: 10;
+        }
+        
+        .form-control {
+            padding-left: 45px;
+            height: 50px;
+            border: 2px solid #e1e5eb;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .form-control.is-invalid {
+            border-color: #f5576c;
+        }
+        
+        .form-control.is-valid {
+            border-color: #2ecc71;
+        }
+        
+        .invalid-feedback, .valid-feedback {
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+        
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            font-size: 0.9rem;
+        }
+        
+        .remember-me {
+            display: flex;
+            align-items: center;
+        }
+        
+        .remember-me input {
+            margin-right: 8px;
+        }
+        
+        .forgot-password {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .forgot-password:hover {
+            text-decoration: underline;
+            color: #764ba2;
+        }
+        
+        .btn-login {
+            background: var(--primary-gradient);
+            border: none;
+            color: white;
+            height: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            width: 100%;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+        
+        .btn-login:hover {
+            background: var(--secondary-gradient);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(245, 87, 108, 0.3);
+        }
+        
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 25px 0;
+            color: #999;
+        }
+        
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e1e5eb;
+        }
+        
+        .divider span {
+            padding: 0 15px;
+            font-size: 0.9rem;
+        }
+        
+        .register-link {
+            text-align: center;
+            color: #666;
+            font-size: 0.95rem;
+        }
+        
+        .register-link a {
+            color: #667eea;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        
+        .register-link a:hover {
+            text-decoration: underline;
+            color: #764ba2;
+        }
+        
+        .language-switcher {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        
+        .btn-language {
+            background: transparent;
+            border: 1px solid #ddd;
+            color: #666;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-language:hover, .btn-language.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+        
+        .alert {
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 576px) {
+            .login-container {
+                padding: 15px;
+            }
+            
+            .login-card {
+                padding: 30px 25px;
+            }
+            
+            .form-options {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+        
+        /* 密码显示/隐藏切换 */
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            z-index: 10;
+        }
+        
+        .password-toggle:hover {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+<div class="login-container">
+    <div class="login-card">
+        <div class="logo-container">
+            <div class="logo">
+                <i class="fas fa-book"></i>
+            </div>
+            <h1 class="login-title">图书管理系统</h1>
+            <p class="login-subtitle">请登录您的账户以继续</p>
+        </div>
+        
+        <!-- 错误提示 -->
+        <div class="alert alert-danger" id="errorAlert" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <span id="errorMessage">用户名或密码错误！</span>
+        </div>
+        
+        <!-- 成功提示 -->
+        <div class="alert alert-success" id="successAlert" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            <span id="successMessage">登录成功，正在跳转...</span>
+        </div>
+        
+        <form id="loginForm" novalidate>
+            <div class="form-group">
+                <label for="username" class="form-label">用户名</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-user input-icon"></i>
+                    <input type="text" class="form-control" id="username" name="username" 
+                           placeholder="请输入用户名" required autofocus>
+                    <div class="invalid-feedback">
+                        请输入有效的用户名
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password" class="form-label">密码</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="password" class="form-control" id="password" name="password" 
+                           placeholder="请输入密码" required>
+                    <button type="button" class="password-toggle" id="passwordToggle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <div class="invalid-feedback">
+                        请输入密码
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-options">
+                <div class="remember-me">
+                    <input type="checkbox" id="rememberMe" value="remember-me">
+                    <label for="rememberMe">记住我</label>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-login" id="loginButton">
+                <span id="loginText">登录</span>
+                <span id="loginSpinner" class="spinner" style="display: none;"></span>
+            </button>
+            
+            <div class="divider">
+                <span>或</span>
+            </div>
+            
+            <div class="register-link">
+                <p>还没有账号？ <a href="#" id="registerLink">立即注册</a></p>
+            </div>
+            
+            <div class="language-switcher">
+                <button type="button" class="btn btn-language active" data-lang="zh_CN">中文</button>
+                <button type="button" class="btn btn-language" data-lang="en_US">English</button>
+            </div>
+        </form>
+    </div>
+    
+    <div class="footer">
+       <p class="mb-0">© 2025 图书管理系统. 版权所有.</p>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // 密码显示/隐藏切换
+        $('#passwordToggle').click(function() {
+            const passwordInput = $('#password');
+            const icon = $(this).find('i');
+            
+            if (passwordInput.attr('type') === 'password') {
+                passwordInput.attr('type', 'text');
+                icon.removeClass('fa-eye').addClass('fa-eye-slash');
+            } else {
+                passwordInput.attr('type', 'password');
+                icon.removeClass('fa-eye-slash').addClass('fa-eye');
+            }
+        });
+        
+        // 语言切换
+        $('.btn-language').click(function() {
+            const lang = $(this).data('lang');
+            $('.btn-language').removeClass('active');
+            $(this).addClass('active');
+            
+            // 这里可以添加语言切换逻辑
+            console.log('切换到语言:', lang);
+            // 实际应用中应该发送请求到服务器切换语言
+        });
+        
+        // 表单验证
+        $('#loginForm').submit(function(e) {
+            e.preventDefault();
+            
+            // 隐藏之前的提示
+            $('.alert').hide();
+            
+            // 验证表单
+            const username = $('#username').val().trim();
+            const password = $('#password').val().trim();
+            let isValid = true;
+            
+            // 重置验证状态
+            $('#username, #password').removeClass('is-invalid is-valid');
+            
+            // 验证用户名
+            if (!username) {
+                $('#username').addClass('is-invalid');
+                isValid = false;
+            } else {
+                $('#username').addClass('is-valid');
+            }
+            
+            // 验证密码
+            if (!password) {
+                $('#password').addClass('is-invalid');
+                isValid = false;
+            } else {
+                $('#password').addClass('is-valid');
+            }
+            
+            if (!isValid) {
+                $('#errorAlert').html('<i class="fas fa-exclamation-circle me-2"></i>请填写所有必填字段').show();
+                return;
+            }
+            
+            // 显示加载状态
+            $('#loginButton').prop('disabled', true);
+            $('#loginText').text('登录中...');
+            $('#loginSpinner').show();
+            
+            // 发送登录请求
+            $.ajax({
+                url: '/user/login',
+                type: 'POST',
+                data: {
+                    username: username,
+                    password: password
+                },
+                success: function(response) {
+                    // 重置按钮状态
+                    $('#loginButton').prop('disabled', false);
+                    $('#loginText').text('登录');
+                    $('#loginSpinner').hide();
+                    
+                    if (response.success) {
+                        // 登录成功
+                        $('#successAlert').html('<i class="fas fa-check-circle me-2"></i>登录成功，正在跳转...').show();
+                        
+                        // 根据响应中的redirect字段跳转
+                        setTimeout(function() {
+                            if (response.redirect) {
+                                window.location.href = response.redirect;
+                            } else {
+                                // 默认跳转
+                                if (response.user && response.user.role === 1) {
+                                    window.location.href = '/reader/admin/dashboard';
+                                } else {
+                                    window.location.href = '/reader/dashboard';
+                                }
+                            }
+                        }, 1000);
+                    } else {
+                        // 登录失败
+                        $('#errorAlert').html('<i class="fas fa-exclamation-circle me-2"></i>' + (response.message || '用户名或密码错误！')).show();
+                    }
+                },
+                error: function(xhr, status, error) {
+                    // 重置按钮状态
+                    $('#loginButton').prop('disabled', false);
+                    $('#loginText').text('登录');
+                    $('#loginSpinner').hide();
+                    
+                    const errorMsg = xhr.responseJSON ? xhr.responseJSON.message : error;
+                    $('#errorAlert').html('<i class="fas fa-exclamation-circle me-2"></i>登录请求失败：' + errorMsg).show();
+                }
+            });
+        });
+        
+        // 注册链接点击事件
+        $('#registerLink').click(function(e) {
+            e.preventDefault();
+            showRegisterModal();
+        });
+        
+        // 显示注册模态框函数
+        function showRegisterModal() {
+            const modalHtml = `
+                <div class="modal fade" id="registerModal" tabindex="-1" role="dialog" aria-labelledby="registerModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="registerModalLabel">用户注册</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="registerForm">
+                                    <div class="form-group">
+                                        <label for="registerUsername">用户名 <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="registerUsername" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="registerPassword">密码 <span class="text-danger">*</span></label>
+                                        <input type="password" class="form-control" id="registerPassword" required>
+                                    </input>
+                                    <div class="form-group">
+                                        <label for="registerConfirmPassword">确认密码 <span class="text-danger">*</span></label>
+                                        <input type="password" class="form-control" id="registerConfirmPassword" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="registerName">姓名</label>
+                                        <input type="text" class="form-control" id="registerName">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="registerPhone">手机号</label>
+                                        <input type="tel" class="form-control" id="registerPhone">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="registerEmail">邮箱</label>
+                                        <input type="email" class="form-control" id="registerEmail">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="registerStudentId">学号/工号</label>
+                                        <input type="text" class="form-control" id="registerStudentId">
+                                    </div>
+                                    <div class="alert" id="registerAlert" role="alert" style="display: none;"></div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                <button type="button" class="btn btn-primary" id="registerSubmitBtn">注册</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 添加模态框到页面
+            if ($('#registerModal').length === 0) {
+                $('body').append(modalHtml);
+            }
+            
+            // 显示模态框
+            $('#registerModal').modal('show');
+            
+            // 密码验证
+            $('#registerPassword, #registerConfirmPassword').on('input', function() {
+                const password = $('#registerPassword').val();
+                const confirmPassword = $('#registerConfirmPassword').val();
+                
+                if (confirmPassword && password !== confirmPassword) {
+                    $('#registerConfirmPassword').addClass('is-invalid').removeClass('is-valid');
+                } else if (confirmPassword) {
+                    $('#registerConfirmPassword').addClass('is-valid').removeClass('is-invalid');
+                }
+            });
+            
+            // 注册提交按钮事件
+            $('#registerSubmitBtn').off('click').on('click', function() {
+                const userData = {
+                    username: $('#registerUsername').val().trim(),
+                    password: $('#registerPassword').val(),
+                    confirmPassword: $('#registerConfirmPassword').val(),
+                    name: $('#registerName').val().trim(),
+                    phone: $('#registerPhone').val().trim(),
+                    email: $('#registerEmail').val().trim(),
+                    studentId: $('#registerStudentId').val().trim()
+                };
+                
+                // 验证
+                if (!userData.username || !userData.password) {
+                    showRegisterAlert('用户名和密码不能为空！', 'danger');
+                    return;
+                }
+                
+                if (userData.password !== userData.confirmPassword) {
+                    showRegisterAlert('两次输入的密码不一致！', 'danger');
+                    return;
+                }
+                
+                if (userData.password.length < 6) {
+                    showRegisterAlert('密码长度至少6位！', 'danger');
+                    return;
+                }
+                
+                // 显示加载状态
+                $(this).prop('disabled', true).html('<span class="spinner spinner-sm"></span> 注册中...');
+                
+                // 发送注册请求
+                $.ajax({
+                    url: '/user/register',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(userData),
+                    success: function(response) {
+                        $('#registerSubmitBtn').prop('disabled', false).text('注册');
+                        
+                        if (response.success) {
+                            showRegisterAlert('注册成功！请使用新账号登录。', 'success');
+                            setTimeout(function() {
+                                $('#registerModal').modal('hide');
+                                // 清空表单
+                                $('#registerForm')[0].reset();
+                            }, 1500);
+                        } else {
+                            showRegisterAlert(response.message || '注册失败！', 'danger');
+                        }
+                    },
+                    error: function(xhr) {
+                        $('#registerSubmitBtn').prop('disabled', false).text('注册');
+                        showRegisterAlert('注册请求失败：' + (xhr.responseJSON ? xhr.responseJSON.message : '服务器错误'), 'danger');
+                    }
+                });
+            });
+            
+            // 显示注册提示函数
+            function showRegisterAlert(message, type) {
+                const alertDiv = $('#registerAlert');
+                alertDiv.removeClass('alert-success alert-danger').addClass('alert-' + type).html('<i class="fas fa-exclamation-circle me-2"></i>' + message).show();
+            }
+            
+            // 模态框关闭时清理
+            $('#registerModal').on('hidden.bs.modal', function() {
+                $('#registerAlert').hide();
+                $('#registerForm')[0].reset();
+                $('#registerSubmitBtn').prop('disabled', false).text('注册');
+            });
+        }
+        
+        // 添加小尺寸spinner样式
+        if (!$('style:contains(".spinner-sm")').length) {
+            $('head').append('<style>.spinner-sm { width: 16px; height: 16px; border-width: 2px; margin-right: 8px; }</style>');
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+  <meta charset="UTF-8">
+  <title th:text="${title}"></title>
+  <link th:href="@{/login/css/bootstrap.min.css}" rel="stylesheet">
+  <script th:src="@{login/js/bootstrap.bundle.min.js}"></script>
+  <script th:src="@{login/js/jquery-3.6.0.js}"></script>
+  <style>
+    li {
+      list-style-type: none;
+      a {
+        text-decoration: none;
+        color:black;
+        font-size: 28px;
+        text-align:center;
+      }
+    }
+  </style>
+</head>
+<body>
+<!--顶部导航栏-->
+<div th:fragment="topnav" style="background: #0d6efd;height: 60px">
+  <ul style="float:right">
+    <li>
+      <a th:href="@{/getProductList}">前台首页</a>
+    </li>
+  </ul>
+</div>
+<!--侧边栏-->
+<div class="col-2" th:fragment="menu" style="background-color:pink">
+  <ul>
+    <li>
+      <a href="">商品管理</a>
+    </li>
+
+  </ul>
+  <ul>
+    <li>
+      <a href="">分类管理</a>
+    </li>
+
+  </ul>
+  <ul>
+    <li>
+      <a href="">销售统计</a>
+    </li>
+  </ul>
+</div>
+</body>
+</html>
